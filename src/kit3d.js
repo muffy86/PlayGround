@@ -1,5 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { sparkPool, drumLights, cameraTrauma, sensorySettings, DRUM_IDS, SPARK_GLSL, SPARK_GLSL_FRAG, sparkUniforms } from './engine/index.ts';
+
+// Fixed head positions mirror buildKit() so per-drum lights survive rebuilds.
+const HEAD_POS = {
+  kick: [0, 0.85, 0.6], snare: [-1.35, 1.15, 1.5], tom1: [-0.55, 1.75, 0.35],
+  tom2: [0.55, 1.75, 0.35], floor: [1.55, 0.95, 0.9], hihat: [-2.25, 1.7, 0.9],
+  hihatOpen: [-2.1, 1.8, 0.9], crash: [-1.15, 2.25, -0.35], ride: [1.5, 2.15, -0.2],
+};
 
 export const PAD_DEFS = [
   { id: 'crash', label: 'Crash', emoji: '🌊', key: 'Q', color: '#ffd166', glow: '#ffd166' },
@@ -21,6 +29,11 @@ let eqBars = [];
 let stickL, stickR, stickT = 0;
 let onHit3D = null;
 let flashT = 0;
+// Phase 3 juice: per-drum reactive lights + GPU spark points + shake scratch.
+let headLights = [];
+let sparkPts = null, sparkPosAttr = null, sparkDataAttr = null;
+let sparkScratch = null;
+const shakeScratch = { x: 0, y: 0, roll: 0, trauma: 0 };
 
 export function setHitCallback(fn) { onHit3D = fn; }
 export function getKitMode() { return kitMode; }
@@ -94,6 +107,46 @@ export function initScene(canvas) {
 
   kitGroup = new THREE.Group(); scene.add(kitGroup);
   buildKit('acoustic');
+
+  // Reactive point light over every drum head (intensity driven by DrumLightRig).
+  for (const id of DRUM_IDS) {
+    const def = PAD_DEFS.find(p => p.id === id);
+    const light = new THREE.PointLight(new THREE.Color(def?.glow || '#ffffff'), 0, 7, 2);
+    const pos = HEAD_POS[id] || [0, 1.5, 0];
+    light.position.set(pos[0], pos[1] + 0.9, pos[2]);
+    scene.add(light);
+    headLights.push({ id, light });
+  }
+  // Preallocated GPU spark points fed by SparkPool (no per-hit allocation).
+  {
+    const cap = sparkPool.capacity;
+    const geo = new THREE.BufferGeometry();
+    sparkPosAttr = new THREE.BufferAttribute(new Float32Array(cap * 3), 3);
+    sparkDataAttr = new THREE.BufferAttribute(new Float32Array(cap * 2), 2);
+    sparkPosAttr.setUsage(THREE.DynamicDrawUsage);
+    sparkDataAttr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', sparkPosAttr);
+    geo.setAttribute('aData', sparkDataAttr);
+    geo.setDrawRange(0, 0);
+    const uni = sparkUniforms(0, 0, 0.8, Math.min(devicePixelRatio, 2));
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: uni.uTime },
+        uBloom: { value: uni.uBloom },
+        uIntensity: { value: uni.uIntensity },
+        uPixelRatio: { value: uni.uPixelRatio },
+      },
+      vertexShader: SPARK_GLSL,
+      fragmentShader: SPARK_GLSL_FRAG,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    sparkPts = new THREE.Points(geo, mat);
+    sparkPts.frustumCulled = false;
+    scene.add(sparkPts);
+    sparkScratch = new Float32Array(cap * 5);
+  }
 
   ray = new THREE.Raycaster(); ptr = new THREE.Vector2();
   let downAt = 0;
@@ -225,6 +278,13 @@ export function strike(id, vel = 1) {
   const key = id === 'hihatOpen' ? 'hihat' : id;
   const h = hitMeshes.get(key) || hitMeshes.get(id);
   if (h) h.t = 1;
+  // Phase 3 juice: slam the head light, burst 40–60 sparks at the head.
+  try {
+    drumLights.strike(id, vel);
+    const p = h ? h.group.position : null;
+    const o = p ? { x: p.x, y: p.y + 0.35, z: p.z } : { x: 0, y: 1.5, z: 0 };
+    sparkPool.burst(o, { count: 44 + Math.floor(Math.random() * 16) });
+  } catch { /* juice is best-effort */ }
   // sticks snap
   stickT = 1;
   const target = id === 'kick' ? { x: 0, y: 1.4, z: 1.2 } : h ? { x: h.group.position.x, y: h.group.position.y + 0.7, z: h.group.position.z + 0.5 } : null;
@@ -251,8 +311,41 @@ function tick() {
   const dt = 0.016;
   camT += dt;
   controls.update();
+  // Phase 3 juice: spring-damped micro-trauma (frame-local, controls reset it).
+  try {
+    const sh = cameraTrauma.update(dt, shakeScratch);
+    camera.position.x += sh.x;
+    camera.position.y += sh.y;
+    camera.rotation.z += sh.roll;
+  } catch { /* ignore */ }
   // subtle camera sway + flash zoom punch
   flashT = Math.max(0, flashT - dt * 3);
+  // Reactive lights: exponential specular decay from the rig.
+  try {
+    drumLights.update(dt);
+    for (let i = 0; i < headLights.length; i++) {
+      const entry = headLights[i];
+      entry.light.intensity = drumLights.intensityAt(DRUM_IDS.indexOf(entry.id));
+    }
+  } catch { /* ignore */ }
+  // Sparks: simulate, then upload alive rows into the preallocated attributes.
+  try {
+    const n = sparkPool.update(dt);
+    const pos = sparkPosAttr.array, dat = sparkDataAttr.array;
+    const rows = sparkPool.writeInstances(sparkScratch);
+    for (let i = 0; i < rows; i++) {
+      const s = i * 5;
+      pos[i * 3] = sparkScratch[s]; pos[i * 3 + 1] = sparkScratch[s + 1]; pos[i * 3 + 2] = sparkScratch[s + 2];
+      dat[i * 2] = sparkScratch[s + 3]; dat[i * 2 + 1] = sparkScratch[s + 4];
+    }
+    sparkPts.geometry.setDrawRange(0, rows);
+    sparkPosAttr.needsUpdate = true;
+    sparkDataAttr.needsUpdate = true;
+    const lv = sensorySettings.get();
+    sparkPts.material.uniforms.uTime.value = camT;
+    sparkPts.material.uniforms.uBloom.value = lv.bloom;
+    sparkPts.material.uniforms.uIntensity.value = flashT + n / 240;
+  } catch { /* ignore */ }
   // kit hit squash
   for (const [, h] of hitMeshes) {
     if (h.t > 0) {

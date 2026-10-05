@@ -54,6 +54,7 @@ body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Inter,sans-s
 .btn.icon{padding:9px 11px}
 .btn.tap{background:linear-gradient(90deg,var(--gold),#ff8a3d);color:#231300;border:none;font-size:15px;padding:12px 22px;box-shadow:0 0 20px rgba(255,209,102,.7)}
 #staff{width:100%;height:86px;display:block;background:rgba(0,0,0,.35);border-radius:12px;border:1px solid rgba(255,255,255,.08);margin-top:8px}
+#strip{width:100%;height:30px;display:block;background:rgba(0,0,0,.35);border-radius:10px;border:1px solid rgba(255,255,255,.08);margin-top:6px}
 #highway{position:relative;height:0;overflow:visible}
 #hitLine{display:none}
 #lessonRow{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}

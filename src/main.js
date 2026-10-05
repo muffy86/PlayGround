@@ -3,7 +3,7 @@ import { initScene, strike, setKitMode, setHitCallback, PAD_DEFS } from './kit3d
 import { ensureAudio, playDrum, setAudioKit, toggleMute, isMuted } from './audio.js';
 import { LESSONS, drawStaff, lessonById } from './notation.js';
 import { game, setLesson, start, stop, beatNow, stepNow, playerHit, playerHitTick, getQuantizer, syncEngineTempo, metroStart, metroStop, metroTap, miniStart, miniEnd } from './game.js';
-import { drumSession, practiceTelemetry, ToolBridge, attachLiveModelContext, attachLiveRuntime, NoteHighway, EngineLoop, MidiClock, MidiTickSource } from './engine/index.ts';
+import { drumSession, practiceTelemetry, ToolBridge, attachLiveModelContext, attachLiveRuntime, NoteHighway, EngineLoop, MidiClock, MidiTickSource, juiceSynth, registerSensoryTools, offsetStrip } from './engine/index.ts';
 import { state, save, xpForLevel, rankFor, addXP, addCoins } from './state.js';
 import { judge, confetti, buzz, toast, tapFlash, floatXP, ringBurst } from './ui.js';
 
@@ -14,6 +14,10 @@ const staff = $('staff');
 initScene($('scene'));
 setHitCallback((id) => hitDrum(id, 1));
 addEventListener('pointerdown', () => ensureAudio(), { once: true });
+// Phase 3 juice synth warms up on first gesture (autoplay-safe).
+addEventListener('pointerdown', () => {
+  try { juiceSynth.ensure(); juiceSynth.resume(); } catch { /* audio not ready */ }
+}, { once: true });
 addEventListener('keydown', (e) => {
   if (e.repeat) return;
   ensureAudio();
@@ -243,6 +247,7 @@ const toolBridge = new ToolBridge(drumSession, {
     document.querySelectorAll('.kitBtn').forEach((x) => x.classList.toggle('active', x.dataset.kit === kit.mode));
   },
 });
+try { registerSensoryTools(toolBridge, { synth: juiceSynth }); } catch { /* already registered */ }
 attachLiveModelContext(toolBridge)?.catch(() => {});
 attachLiveRuntime(toolBridge);
 
@@ -298,7 +303,68 @@ function frame() {
   } else {
     drawStaff(staff, game.lesson, s, { mode: 'read', playing: game.playing, hitFlash: game.hitFlash, teach: true });
   }
+  drawOffsetStrip();
   drumSession.commit();
+}
+
+// Phase 3: millisecond timing-offset strip, fed live by the Phase 2 buffer.
+const strip = $('strip');
+const STRIP_COLORS = { PERFECT: '#38f0ff', GREAT: '#7CFF6B', GOOD: '#ffd166', MISS: '#ff5d5d' };
+function drawOffsetStrip() {
+  if (!strip || strip.clientWidth === 0) return;
+  try {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const W = strip.clientWidth, H = strip.clientHeight || 30;
+    if (strip.width !== Math.round(W * dpr)) { strip.width = Math.round(W * dpr); strip.height = Math.round(H * dpr); }
+    const g = strip.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const midY = H / 2;
+    // perfect window band (±45 ms of the ±150 ms window)
+    g.fillStyle = 'rgba(56,240,255,.10)';
+    const bandH = (45 / 150) * (H / 2);
+    g.fillRect(0, midY - bandH, W, bandH * 2);
+    g.strokeStyle = 'rgba(255,255,255,.35)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, midY); g.lineTo(W, midY); g.stroke();
+    const n = practiceTelemetry.length;
+    if (!n) {
+      g.fillStyle = 'rgba(255,255,255,.4)';
+      g.font = '700 10px system-ui, sans-serif';
+      g.textAlign = 'center';
+      g.fillText('timing strip — strike a drum', W / 2, midY + 3);
+      return;
+    }
+    const samples = [];
+    for (let i = Math.max(0, n - 48); i < n; i++) {
+      try { samples.push(practiceTelemetry.at(i)); } catch { /* ignore */ }
+    }
+    const pts = offsetStrip(samples, { windowMs: 150, maxPoints: 48 });
+    // trail
+    g.strokeStyle = 'rgba(123,92,255,.55)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    pts.forEach((p, i) => {
+      const x = 8 + p.u * (W - 16);
+      const y = midY - p.v * (H / 2 - 4);
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    });
+    g.stroke();
+    // dots, newest last (on top)
+    pts.forEach((p, i) => {
+      const x = 8 + p.u * (W - 16);
+      const y = midY - p.v * (H / 2 - 4);
+      const isNew = i === pts.length - 1;
+      g.fillStyle = STRIP_COLORS[p.rating] || '#fff';
+      g.shadowColor = g.fillStyle;
+      g.shadowBlur = isNew ? 8 : 0;
+      g.beginPath();
+      g.arc(x, y, isNew ? 4 : 2.5, 0, 7);
+      g.fill();
+    });
+    g.shadowBlur = 0;
+  } catch { /* strip must never break the frame */ }
 }
 frame();
 

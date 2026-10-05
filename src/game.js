@@ -2,7 +2,25 @@ import { ensureAudio, playDrum, click, now } from './audio.js';
 import { lessonById, patternToRush } from './notation.js';
 import { state, save, addXP, addCoins, bumpStreak, resetStreak } from './state.js';
 import { judge, confetti, buzz, floatXP, toast } from './ui.js';
-import { PolyrhythmQuantizer, createQuantizeResult, practiceTelemetry } from './engine/index.ts';
+import { PolyrhythmQuantizer, createQuantizeResult, practiceTelemetry, juiceSynth, triggerHaptic, sensorySettings, cameraTrauma } from './engine/index.ts';
+
+/**
+ * Phase 3 arcade juice for one judged strike. Audio/haptics/shake must never
+ * break gameplay, so every call is guarded. Combo chimes climb C4→C6 while
+ * hits land; a MISS slams the low-pass dip and resets the ladder.
+ */
+function juiceHit(rating, offsetMs, combo) {
+  try {
+    const lv = sensorySettings.get();
+    triggerHaptic(rating, lv.haptics);
+    cameraTrauma.hit(rating, offsetMs, lv.shake);
+    if (rating === 'MISS') {
+      try { juiceSynth.missDip(); } catch { /* audio not ready */ }
+    } else {
+      try { juiceSynth.chime(Math.max(0, combo - 1)); } catch { /* audio not ready */ }
+    }
+  } catch { /* juice is best-effort */ }
+}
 
 // ---- Phase 1 engine: grid authority for rush judging ----
 // 16 semiquaver slots per 4-quarter cycle mirrors the lesson patterns.
@@ -232,9 +250,9 @@ function judgeRead(drum, b) {
       const ms = Math.round(msOff);
       const rating = ms < 45 ? 'PERFECT' : ms < 90 ? 'GREAT' : 'GOOD';
       logDeviation(drum, signedMs, rating);
-      if (ms < 45) { game.perfects++; addXP(5); judge('PERFECT', 'perfect', `${drum} · ${ms}ms · +5XP`); confetti(24); buzz(25); }
-      else if (ms < 90) { addXP(3); judge('GREAT', 'great', `${drum} · ${ms}ms · +3XP`); buzz(15); }
-      else { addXP(2); judge('GOOD', 'good', `${drum} · ${ms}ms · +2XP`); }
+      if (ms < 45) { game.perfects++; addXP(5); judge('PERFECT', 'perfect', `${drum} · ${ms}ms · +5XP`); confetti(24); juiceHit('PERFECT', signedMs, game.combo); }
+      else if (ms < 90) { addXP(3); judge('GREAT', 'great', `${drum} · ${ms}ms · +3XP`); juiceHit('GREAT', signedMs, game.combo); }
+      else { addXP(2); judge('GOOD', 'good', `${drum} · ${ms}ms · +2XP`); juiceHit('GOOD', signedMs, game.combo); }
       bumpStreakLite();
       game.onScore?.();
       return { judged: true, ok: true };
@@ -247,6 +265,7 @@ function judgeRead(drum, b) {
   logDeviation(drum, signedMs ?? 200, 'MISS');
   judge('MISS', 'miss', drum);
   playDrum('bad', null, 0.4);
+  juiceHit('MISS', signedMs ?? 200, 0);
   game.onScore?.();
   return { judged: true, ok: false };
 }
@@ -293,9 +312,9 @@ function applyGridHit(drum, slot, cycle, rating, offsetMs) {
     markRushNoteJudged(drum, cycle, slot);
     game.hits++; game.combo++; game.maxCombo = Math.max(game.maxCombo, game.combo);
     const ms = Math.round(Math.abs(offsetMs));
-    if (rating === 'PERFECT') { game.perfects++; addXP(6); judge('PERFECT', 'perfect', `+6XP · x${game.combo} · ${ms}ms`); confetti(30); buzz(30); }
-    else if (rating === 'GREAT') { addXP(4); judge('GREAT', 'great', `+4XP · x${game.combo} · ${ms}ms`); buzz(18); }
-    else { addXP(2); judge('GOOD', 'good', `+2XP · x${game.combo} · ${ms}ms`); }
+    if (rating === 'PERFECT') { game.perfects++; addXP(6); judge('PERFECT', 'perfect', `+6XP · x${game.combo} · ${ms}ms`); confetti(30); juiceHit('PERFECT', offsetMs, game.combo); }
+    else if (rating === 'GREAT') { addXP(4); judge('GREAT', 'great', `+4XP · x${game.combo} · ${ms}ms`); juiceHit('GREAT', offsetMs, game.combo); }
+    else { addXP(2); judge('GOOD', 'good', `+2XP · x${game.combo} · ${ms}ms`); juiceHit('GOOD', offsetMs, game.combo); }
     // combo bonus every 10
     if (game.combo % 10 === 0) { addCoins(5); addXP(10); toast(`🔥 ${game.combo} COMBO! +10 XP +5🪙`); confetti(70); }
     bumpStreakLite();
@@ -304,6 +323,7 @@ function applyGridHit(drum, slot, cycle, rating, offsetMs) {
   }
   game.combo = 0; resetStreak();
   judge('MISS', 'miss', drum);
+  juiceHit('MISS', offsetMs, 0);
   game.onScore?.();
   return { judged: true, ok: false };
 }
@@ -373,10 +393,10 @@ export function metroTap() {
   if (m.taps.length > 40) m.taps.shift();
   const tol = m.strict;
   let res;
-  if (abs <= tol * 0.5) { res = 'PERFECT'; addXP(4); m.streak++; judge('PERFECT', 'perfect', `${ms}ms · +4XP`); confetti(20); buzz(25); }
-  else if (abs <= tol) { res = 'GREAT'; addXP(2); m.streak++; judge('GREAT', 'great', `${ms}ms · +2XP`); buzz(15); }
-  else if (abs <= tol * 2) { res = 'EARLY/LATE'; m.streak = 0; judge(abs > 0 ? 'LATE' : 'EARLY', 'good', `${ms}ms`); }
-  else { res = 'MISS'; m.streak = 0; resetStreak(); judge('MISS', 'miss', `${ms}ms`); }
+  if (abs <= tol * 0.5) { res = 'PERFECT'; addXP(4); m.streak++; judge('PERFECT', 'perfect', `${ms}ms · +4XP`); confetti(20); juiceHit('PERFECT', ms, m.streak); }
+  else if (abs <= tol) { res = 'GREAT'; addXP(2); m.streak++; judge('GREAT', 'great', `${ms}ms · +2XP`); juiceHit('GREAT', ms, m.streak); }
+  else if (abs <= tol * 2) { res = 'EARLY/LATE'; m.streak = 0; judge(abs > 0 ? 'LATE' : 'EARLY', 'good', `${ms}ms`); juiceHit('GOOD', ms, 0); }
+  else { res = 'MISS'; m.streak = 0; resetStreak(); judge('MISS', 'miss', `${ms}ms`); juiceHit('MISS', ms, 0); }
   logDeviation('kick', ms, res === 'EARLY/LATE' ? 'GOOD' : res);
   m.best = Math.max(m.best, m.streak);
   if (m.streak > 0 && m.streak % 8 === 0) { addCoins(4); addXP(8); toast(`⏱ Pocket streak ${m.streak}! +8XP`); confetti(50); }

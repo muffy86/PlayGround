@@ -51,7 +51,7 @@ export interface BridgeHost {
   onKit?: (kit: KitSnapshot) => void;
 }
 
-const ACTION_NAME = /^[a-z][a-z0-9_]{0,63}$/;
+const ACTION_NAME = /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/;
 const BLOCKED_ACTIONS = new Set(['sh', 'bash', 'zsh', 'exec', 'spawn', 'eval', 'system', 'shell']);
 
 /** Action names the bridge will dispatch. Shell-shaped names are refused. */

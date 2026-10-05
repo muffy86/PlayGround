@@ -57,3 +57,26 @@ export {
   RUNTIME_REQUEST_SOURCE,
 } from './runtime.js';
 export type { RuntimePort, RuntimeExecuteRequest, RuntimeResult, RuntimeMessageEvent } from './runtime.js';
+export {
+  ProceduralSynth,
+  juiceSynth,
+  comboFrequency,
+  kickParams,
+  snareParams,
+  missDipParams,
+  COMBO_SCALE,
+  COMBO_TOP,
+} from './synth.js';
+export type { KickParams, SnareParams, MissDipParams, SynthContext, SynthEngineOptions, SynthGraphStats } from './synth.js';
+export { vibrationPatternFor, scalePattern, triggerHaptic, SensorySettings, sensorySettings } from './haptics.js';
+export type { JuiceRating, Vibrator, SensoryLevels } from './haptics.js';
+export { TraumaShake, traumaFor, cameraTrauma } from './shake.js';
+export type { ShakeRating, ShakeSample, TraumaOptions } from './shake.js';
+export { SparkPool, DrumLightRig, sparkPool, drumLights, makeRng } from './particles.js';
+export type { SparkBurst, SparkOrigin } from './particles.js';
+export { Spring1D, FloatTextPool, offsetStrip } from './springs.js';
+export type { SpringOptions, FloatKind, FloatSlot, FloatSpawn, StripPoint, StripOptions } from './springs.js';
+export { sparkUniforms, validateShaderSources, SPARK_WGSL, SPARK_GLSL, SPARK_GLSL_FRAG, RING_WGSL, RING_GLSL } from './shaders.js';
+export type { SparkUniformValues } from './shaders.js';
+export { registerSensoryTools, feedbackIntensitySchema, exportHeatmapSchema } from './sensory.js';
+export type { TelemetryExport, SensoryHooks } from './sensory.js';
