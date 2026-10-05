@@ -1,0 +1,24 @@
+{
+  "name": "stickstar-3d-drummer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "StickStar — 3D gamified drum sight-reading + timing game (phone/tablet)",
+  "scripts": {
+    "dev": "vite --port 3000 --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --port 3000",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.0.3",
+    "vitest": "^3.2.7"
+  }
+}

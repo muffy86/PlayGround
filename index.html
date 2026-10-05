@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0721" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>StickStar — 3D Drum Academy</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="icon" href="./icon-192.svg" type="image/svg+xml" />
+<style>html,body{margin:0;background:#0b0721}</style>
+</head>
+<body>
+<div id="boot">
+  <div class="boot-logo">🥁</div>
+  <div class="boot-title">STICKSTAR</div>
+  <div class="boot-sub">tuning drums…</div>
+</div>
+<canvas id="scene"></canvas>
+<canvas id="fx"></canvas>
+
+<!-- HUD -->
+<header id="hud">
+  <div class="hud-left">
+    <div id="levelBadge"><span id="levelNum">1</span></div>
+    <div class="hud-meta">
+      <div id="playerName">ROOKIE</div>
+      <div id="xpBar"><div id="xpFill"></div><span id="xpText">0 XP</span></div>
+    </div>
+  </div>
+  <div class="hud-right">
+    <div class="pill" id="coinPill">🪙 <b id="coins">0</b></div>
+    <div class="pill" id="streakPill">🔥 <b id="streak">0</b></div>
+    <div class="pill" id="accPill">🎯 <b id="acc">—</b></div>
+  </div>
+</header>
+
+<!-- Combo / judgement popups -->
+<div id="judgeLayer"></div>
+<div id="comboBadge" class="hidden"><span id="comboNum">0</span><small>COMBO</small></div>
+
+<!-- transport / staff panel -->
+<section id="sheetPanel" class="glass">
+  <div class="sheet-top">
+    <div>
+      <div id="modeTitle">FREE PLAY</div>
+      <div id="modeSub">tap the drums · drag to orbit</div>
+    </div>
+    <div id="transportBtns">
+      <button id="btnPlay" class="btn primary">▶ START</button>
+      <button id="btnSound" class="btn icon" title="mute">🔊</button>
+    </div>
+  </div>
+  <canvas id="staff" width="900" height="190"></canvas>
+  <div id="highway"><div id="hitLine"></div></div>
+  <div id="lessonRow">
+    <select id="lessonSel" aria-label="lesson"></select>
+    <div id="bpmWrap">⏱ <input id="bpm" type="range" min="50" max="200" value="90" /><b id="bpmVal">90</b></div>
+    <div id="kitToggle" role="tablist">
+      <button data-kit="acoustic" class="kitBtn active">🥁 acoustic</button>
+      <button data-kit="electric" class="kitBtn">⚡ electric</button>
+    </div>
+  </div>
+</section>
+
+<!-- mode tabs -->
+<nav id="modes">
+  <button data-mode="free" class="modeBtn active"><i>🎛</i><span>Free</span></button>
+  <button data-mode="read" class="modeBtn"><i>🎼</i><span>Read</span></button>
+  <button data-mode="rush" class="modeBtn"><i>⚡</i><span>Rush</span></button>
+  <button data-mode="metro" class="modeBtn"><i>⏱</i><span>Metro</span></button>
+  <button data-mode="minis" class="modeBtn"><i>🎁</i><span>Minis</span></button>
+</nav>
+
+<!-- pads for fat fingers -->
+<div id="pads"></div>
+
+<!-- metro dojo panel -->
+<section id="metroPanel" class="glass hidden">
+  <h3>METRONOME DOJO <small>tap IN the pocket</small></h3>
+  <div class="metro-grid">
+    <div class="pocket"><canvas id="pocket" width="300" height="90"></canvas><div id="pocketMsg">press START, then tap KICK on the click</div></div>
+    <div class="metro-controls">
+      <label>BPM <b id="metroBpmVal">100</b><input id="metroBpm" type="range" min="40" max="220" value="100"/></label>
+      <label>Strictness <select id="strictSel"><option value="90">Chill ±90ms</option><option value="50" selected>Tight ±50ms</option><option value="25">Pro ±25ms</option></select></label>
+      <div class="row"><button id="metroStart" class="btn primary">START CLICK</button><button id="tapBtn" class="btn tap">TAP 🥁</button></div>
+      <div id="metroScore">streak 0 · best 0 · avg —</div>
+    </div>
+  </div>
+</section>
+
+<!-- minis panel -->
+<section id="miniPanel" class="glass hidden">
+  <h3>REWARD ARCADE <small>tiny games · big chops</small></h3>
+  <div id="miniGrid">
+    <button class="miniCard" data-mini="simon"><b>👂 Ear Copy</b><span>Simon-says grooves</span><em id="bestSimon">best 0</em></button>
+    <button class="miniCard" data-mini="limb"><b>🦵 Limb Split</b><span>L vs R independence</span><em id="bestLimb">best 0</em></button>
+    <button class="miniCard" data-mini="fill"><b>🌪 Fill Frenzy</b><span>30s improv chaos</span><em id="bestFill">best 0</em></button>
+    <button class="miniCard" data-mini="chest"><b>🎁 Daily Chest</b><span id="chestInfo">tap to open</span><em>+coins +XP</em></button>
+  </div>
+  <div id="miniStage" class="hidden">
+    <div id="miniMsg">…</div>
+    <div id="miniBtns" class="row"></div>
+    <button id="miniExit" class="btn">✕ close</button>
+  </div>
+</section>
+
+<!-- level up overlay -->
+<div id="levelUp" class="hidden"><div class="card"><div class="big">LEVEL UP!</div><div id="levelUpSub">Level 2 · Rookie → Groover</div><button id="levelUpOk" class="btn primary">LET'S GO 🔥</button></div></div>
+<div id="toastLayer"></div>
+<div id="tapFlash"></div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

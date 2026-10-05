@@ -1,0 +1,14 @@
+{
+  "name": "StickStar — 3D Drum Academy",
+  "short_name": "StickStar",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0721",
+  "theme_color": "#0b0721",
+  "description": "Learn drum sheet music with a gameified 3D drummer: acoustic + electric kits, timing rush, metronome dojo, reward minis.",
+  "icons": [
+    { "src": "./icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" },
+    { "src": "./icon-512.svg", "sizes": "512x512", "type": "image/svg+xml" }
+  ]
+}
