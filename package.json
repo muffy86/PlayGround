@@ -1,0 +1,32 @@
+{
+  "name": "neon-drum-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Neon-reactive electronic drumming studio + Metronome Playground rhythm trainer",
+  "scripts": {
+    "dev": "vite --port 5173 --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "echo 'No e2e browser required — see tests/'",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "framer-motion": "^11.11.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tone": "^15.0.4",
+    "vexflow": "^4.2.3",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.3"
+  }
+}
