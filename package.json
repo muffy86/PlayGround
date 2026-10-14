@@ -1,0 +1,29 @@
+{
+  "name": "groove-lab-3d",
+  "version": "1.0.0",
+  "description": "Groove Lab 3D - visual drummer game: learn sheet music, timing, metronome",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3002 --host",
+    "build": "vite build",
+    "preview": "vite preview --port 3002"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muffy86/PlayGround.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/muffy86/PlayGround/issues"
+  },
+  "homepage": "https://github.com/muffy86/PlayGround#readme",
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0620" />
+<title>Groove Lab 3D — Visual Drummer</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥁</text></svg>" />
+</head>
+<body>
+<div id="boot">
+  <div class="boot-logo">🥁</div>
+  <div class="boot-title">GROOVE LAB <span>3D</span></div>
+  <div class="boot-sub">tap to start • sound on 🔊</div>
+  <button id="bootBtn">ENTER THE STAGE</button>
+  <div class="boot-tip">Phone / tablet ready • headphones recommended 🎧</div>
+</div>
+
+<header id="hud">
+  <div class="hud-left">
+    <div class="logo">🥁 GROOVE<span>LAB</span></div>
+    <div class="lvl-pill"><span id="lvlNum">Lv 1</span><div class="xpbar"><div id="xpFill"></div></div><span id="xpTxt">0 XP</span></div>
+  </div>
+  <div class="hud-right">
+    <div class="coin-pill" title="Coins">🪙 <b id="coinNum">0</b></div>
+    <div class="streak-pill" title="Streak">🔥 <b id="streakNum">0</b></div>
+    <button id="kitToggle" class="kit-toggle" title="Switch kit">🥁 Acoustic</button>
+  </div>
+</header>
+
+<main id="screens">
+  <!-- PLAY -->
+  <section class="screen active" id="screen-play">
+    <div id="stageWrap">
+      <canvas id="stage"></canvas>
+      <canvas id="highway"></canvas>
+      <div id="comboPop"></div>
+      <div id="judgePop"></div>
+      <div id="hitFlash"></div>
+      <div id="songHUD" class="hidden">
+        <div id="songTitle">—</div>
+        <div id="songScore">0</div>
+        <div id="songCombo">combo x0</div>
+        <div class="song-acc" id="songAcc">PERFECT 0 • GREAT 0 • MISS 0</div>
+      </div>
+    </div>
+    <div id="transport">
+      <div class="song-picker">
+        <select id="songSelect"></select>
+        <button id="playSongBtn" class="btn primary">▶ Play track</button>
+        <button id="stopSongBtn" class="btn">■</button>
+      </div>
+      <div id="pads"></div>
+      <div class="hint">Tap 3D drums • tap pads • keys <kbd>A</kbd>–<kbd>K</kbd> • drag to orbit • pinch to zoom</div>
+    </div>
+  </section>
+
+  <!-- LEARN -->
+  <section class="screen" id="screen-learn">
+    <div class="panel">
+      <h2>📖 Learn to read drum sheets</h2>
+      <p class="muted">Drum notation in 60 seconds: each drum lives on its own line. X = cymbals, ● = drums. Play the highlighted notes on the 3D kit.</p>
+      <div id="staffLegend" class="legend"></div>
+      <div id="lessonPath"></div>
+      <div class="card">
+        <h3 id="lessonTitle">Lesson 1</h3>
+        <div id="staffBox"></div>
+        <p id="lessonText" class="muted"></p>
+        <div class="row">
+          <button id="demoLessonBtn" class="btn">🔊 Demo</button>
+          <button id="tryLessonBtn" class="btn primary">🥁 Try it (listen + repeat)</button>
+          <button id="quizLessonBtn" class="btn">❓ Quiz me</button>
+        </div>
+        <div id="lessonFeedback" class="feedback"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GROOVE -->
+  <section class="screen" id="screen-groove">
+    <div class="panel">
+      <h2>🎮 Timing & mini-games</h2>
+      <p class="muted">Short dopamine loops. Each trains a real drumming skill.</p>
+      <div class="game-grid">
+        <button class="game-card" data-game="timing"><b>⚡ Timing Fall</b><span>Hit falling notes on the beat</span><i>Timing • reading</i></button>
+        <button class="game-card" data-game="ear"><b>👂 Ear Copy</b><span>Simon-style: repeat the groove</span><i>Memory • listening</i></button>
+        <button class="game-card" data-game="fill"><b>🌊 Fill Frenzy</b><span>30s: nail as many fills as you can</span><i>Speed • fills</i></button>
+        <button class="game-card" data-game="limb"><b>🦵 Limb Split</b><span>Kick vs hands independence</span><i>Coordination</i></button>
+        <button class="game-card" data-game="burst"><b>💥 Speed Burst</b><span>10s single-stroke sprint</span><i>Stamina</i></button>
+        <button class="game-card" data-game="offbeat"><b>🌀 Offbeat Ninja</b><span>Only the "e & a"s count</span><i>Subdivisions</i></button>
+      </div>
+      <div class="card">
+        <h3 id="miniTitle">Pick a game ↑</h3>
+        <div id="miniDesc" class="muted">Then smash START.</div>
+        <div class="row">
+          <button id="miniStart" class="btn primary">START</button>
+          <div id="miniScore" class="score-chip">score 0</div>
+          <div id="miniTimer" class="score-chip">--</div>
+        </div>
+        <div id="miniFeed" class="feedback"></div>
+        <div id="miniPads" class="mini-pads"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLICK -->
+  <section class="screen" id="screen-click">
+    <div class="panel">
+      <h2>⏱️ Metronome Lab</h2>
+      <div class="metro-card">
+        <div class="metro-bpm"><button id="bpmDown" class="btn">−</button><div><div id="bpmNum">100</div><div class="muted">BPM • <span id="metroBeat">beat 1</span></div></div><button id="bpmUp" class="btn">+</button></div>
+        <input id="bpmSlider" type="range" min="40" max="220" value="100" />
+        <div class="row wrap">
+          <label>Beats <select id="beatsSel"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option></select></label>
+          <label>Sub <select id="subSel"><option value="1">♩</option><option value="2">♪♪</option><option value="3">triplet</option><option value="4">16ths</option></select></label>
+          <button id="tapTempo" class="btn">👆 Tap</button>
+          <button id="metroToggle" class="btn primary">▶ Start click</button>
+        </div>
+        <div id="metroLights" class="metro-lights"></div>
+        <div id="metroStats" class="muted">Timing stability score appears while you play along on the kit.</div>
+      </div>
+      <h3>🏆 Click challenges</h3>
+      <div class="game-grid">
+        <button class="game-card" data-click="steady"><b>🎯 Steady Hands</b><span>16 clicks, hit snare on each. How tight are you?</span></button>
+        <button class="game-card" data-click="ladder"><b>🪜 Speed Ladder</b><span>80 → 140 BPM, 4 hits per rung</span></button>
+        <button class="game-card" data-click="silent"><b>🤫 Silent Bars</b><span>Click drops out for 1 bar. Stay in time!</span></button>
+      </div>
+      <div class="card"><div id="clickFeed" class="feedback">Pick a challenge, then play on the 3D kit.</div><div class="row"><button id="clickStart" class="btn primary">START CHALLENGE</button></div></div>
+    </div>
+  </section>
+
+  <!-- REWARDS -->
+  <section class="screen" id="screen-rewards">
+    <div class="panel">
+      <h2>🏅 Rewards & progress</h2>
+      <div class="stats-row">
+        <div class="stat"><b id="stXP">0</b><span>Total XP</span></div>
+        <div class="stat"><b id="stCoins">0</b><span>Coins</span></div>
+        <div class="stat"><b id="stBest">0</b><span>Best combo</span></div>
+        <div class="stat"><b id="stAcc">—</b><span>Avg timing</span></div>
+      </div>
+      <div id="dailyBox" class="card"></div>
+      <h3>Badges</h3>
+      <div id="badgeGrid" class="badge-grid"></div>
+      <h3>Unlocks (spend coins)</h3>
+      <div id="shopGrid" class="shop-grid"></div>
+      <div class="row"><button id="resetBtn" class="btn danger">Reset progress</button></div>
+    </div>
+  </section>
+</main>
+
+<nav id="tabs">
+  <button data-tab="play" class="active">🥁<span>Play</span></button>
+  <button data-tab="learn">📖<span>Learn</span></button>
+  <button data-tab="groove">🎮<span>Games</span></button>
+  <button data-tab="click">⏱️<span>Click</span></button>
+  <button data-tab="rewards">🏅<span>Wins</span></button>
+</nav>
+
+<canvas id="confetti"></canvas>
+<div id="toasts"></div>
+<div id="floaters"></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
